@@ -14,7 +14,7 @@ type node struct {
 	values   [][]byte
 }
 
-type nodes []node
+type nodes []*node
 
 func (n *node) getValue(key []byte) []byte {
 	idx := n.findPos(key)
@@ -99,7 +99,7 @@ func (n *node) dump() {
 		fmt.Println()
 	}
 
-	for _, c := range []node(n.children) {
+	for _, c := range n.children {
 		c.dump()
 	}
 }
