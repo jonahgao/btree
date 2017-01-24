@@ -40,25 +40,34 @@ func (t *Btree) Put(key []byte, value []byte) error {
 		return nil
 	}
 
-	exist, n := t.root.insert(key, value)
-	if !exist {
+	b, n := t.root.insert(key, value)
+	if b {
 		t.size++
+		// handle split
+		newRoot := n.split(t.order)
+		if newRoot != nil {
+			t.height++
+			t.root = newRoot
+		}
 	}
 
-	newRoot := n.split(t.order)
-	if newRoot != nil {
-		t.height++
-		t.root = newRoot
+	return nil
+}
+
+func (t *Btree) Delete(key []byte) error {
+	if t.root != nil {
+		b, n := t.root.remove(key)
+		if b {
+			newRoot := n.merge(t.order)
+			if newRoot != nil {
+				t.root = newRoot
+				t.height--
+			}
+		}
 	}
 	return nil
 }
 
 func (t *Btree) NewIterator(begin, end []byte) Iterator {
 	return &iterator{}
-}
-
-func (t *Btree) dump() {
-	if t.root != nil {
-		t.root.dump()
-	}
 }

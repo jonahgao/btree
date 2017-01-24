@@ -1,9 +1,6 @@
 package btree
 
-import (
-	"bytes"
-	"fmt"
-)
+import "bytes"
 
 type node struct {
 	isLeaf   bool
@@ -15,22 +12,6 @@ type node struct {
 }
 
 type nodes []*node
-
-func (n *node) getValue(key []byte) []byte {
-	exist, idx := n.findPos(key)
-	if n.isLeaf {
-		if !exist {
-			return nil
-		}
-		return n.values[idx]
-	}
-
-	// equal: go to right child
-	if exist {
-		return n.children[idx+1].getValue(key)
-	}
-	return n.children[idx].getValue(key)
-}
 
 // find equal or greater key pos. return exist(euqal) and index
 func (n *node) findPos(key []byte) (bool, int) {
@@ -44,6 +25,31 @@ func (n *node) findPos(key []byte) (bool, int) {
 	}
 
 	return false, n.numKeys
+}
+
+func (n *node) gotoLeaf(key []byte) *node {
+	if n.isLeaf {
+		return n
+	}
+
+	exist, idx := n.findPos(key)
+	// equal: go to right
+	if exist {
+		return n.children[idx+1].gotoLeaf(key)
+	}
+	return n.children[idx].gotoLeaf(key)
+}
+
+func (n *node) getValue(key []byte) []byte {
+	if n.isLeaf {
+		exist, idx := n.findPos(key)
+		if !exist {
+			return nil
+		}
+		return n.values[idx]
+	}
+
+	return n.gotoLeaf(key).getValue(key)
 }
 
 func (n *node) insertAt(idx int, key []byte, value []byte) {
@@ -64,32 +70,22 @@ func (n *node) insertAt(idx int, key []byte, value []byte) {
 	}
 }
 
-func (n *node) insert(key, value []byte) (exist bool, modified *node) {
-	has, idx := n.findPos(key)
+// if key is already exist return false, otherwise return true
+func (n *node) insert(key, value []byte) (bool, *node) {
 	if n.isLeaf {
-		modified = n
-
+		exist, idx := n.findPos(key)
 		// replace
-		if has {
+		if exist {
 			n.values[idx] = value
-			exist = true
-			return
+			return false, n
 		}
-
 		// add
-		exist = false
 		n.insertAt(idx, key, value)
 		n.numKeys++
-		return
+		return true, n
 	}
 
-	// equal: go to right child
-	if idx < n.numKeys && bytes.Compare(n.keys[idx], key) == 0 {
-		exist, modified = n.children[idx+1].insert(key, value)
-	} else {
-		exist, modified = n.children[idx].insert(key, value)
-	}
-	return
+	return n.gotoLeaf(key).insert(key, value)
 }
 
 func (n *node) split(order int) (newRoot *node) {
@@ -168,26 +164,40 @@ func (n *node) split(order int) (newRoot *node) {
 
 	if newRoot != nil {
 		return
-	} else {
-		newRoot = parent.split(order)
-		return
 	}
+
+	newRoot = parent.split(order)
+	return
 }
 
-func (n *node) dump() {
+// only for leaf
+func (n *node) removeAt(idx int) {
+	for i := idx + 1; i < n.numKeys; i++ {
+		n.keys[i-1] = n.keys[i]
+		n.values[i-1] = n.values[i]
+	}
+	n.keys = n.keys[:n.numKeys-1]
+	n.values = n.keys[:n.numKeys-1]
+	n.numKeys--
+}
+
+func (n *node) remove(key []byte) (bool, *node) {
 	if n.isLeaf {
-		for i := 0; i < n.numKeys; i++ {
-			fmt.Printf("(%v, %v) ", string(n.keys[i]), string(n.values[i]))
+		exist, idx := n.findPos(key)
+		if !exist {
+			return false, nil
 		}
-		fmt.Println()
-	} else {
-		for i := 0; i < n.numKeys; i++ {
-			fmt.Printf("(%v) ", string(n.keys[i]))
-		}
-		fmt.Println()
+		n.removeAt(idx)
+		return true, n
 	}
 
-	for _, c := range n.children {
-		c.dump()
+	return n.gotoLeaf(key).remove(key)
+}
+
+func (n *node) merge(order int) *node {
+	minKeys := (order+1)/2 - 1
+	if n.numKeys >= minKeys {
+		return nil
 	}
+	return nil
 }
