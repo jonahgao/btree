@@ -17,30 +17,33 @@ type node struct {
 type nodes []*node
 
 func (n *node) getValue(key []byte) []byte {
-	idx := n.findPos(key)
+	exist, idx := n.findPos(key)
 	if n.isLeaf {
-		if idx == n.numKeys || bytes.Compare(n.keys[idx], key) != 0 {
+		if !exist {
 			return nil
 		}
 		return n.values[idx]
 	}
 
 	// equal: go to right child
-	if idx < n.numKeys && bytes.Compare(n.keys[idx], key) == 0 {
+	if exist {
 		return n.children[idx+1].getValue(key)
 	}
-
 	return n.children[idx].getValue(key)
 }
 
-func (n *node) findPos(key []byte) int {
+// find equal or greater key pos. return exist(euqal) and index
+func (n *node) findPos(key []byte) (bool, int) {
 	for i := 0; i < n.numKeys; i++ {
-		if bytes.Compare(n.keys[i], key) >= 0 {
-			return i
+		c := bytes.Compare(n.keys[i], key)
+		if c == 0 {
+			return true, i
+		} else if c > 0 {
+			return false, i
 		}
 	}
 
-	return n.numKeys
+	return false, n.numKeys
 }
 
 func (n *node) insertAt(idx int, key []byte, value []byte) {
@@ -62,12 +65,12 @@ func (n *node) insertAt(idx int, key []byte, value []byte) {
 }
 
 func (n *node) insert(key, value []byte) (exist bool, modified *node) {
-	idx := n.findPos(key)
+	has, idx := n.findPos(key)
 	if n.isLeaf {
 		modified = n
 
 		// replace
-		if idx < n.numKeys && bytes.Compare(n.keys[idx], key) == 0 {
+		if has {
 			n.values[idx] = value
 			exist = true
 			return
@@ -148,7 +151,10 @@ func (n *node) split(order int) (newRoot *node) {
 		parent.keys = [][]byte{midKey}
 		parent.children = []*node{n, rc}
 	} else {
-		idx := parent.findPos(midKey)
+		exist, idx := parent.findPos(midKey)
+		if exist {
+			panic("should does not exist")
+		}
 
 		parent.children = append(parent.children, nil)
 		for i := parent.numKeys; i > idx; i++ {
