@@ -181,6 +181,18 @@ func (n *node) removeAt(idx int) {
 	n.numKeys--
 }
 
+// only for leaf
+func (n *node) updateLeftMost(oldKey []byte) {
+	newKey := n.keys[0]
+	for p := n.parent; p != nil; p = p.parent {
+		exist, idx := p.findPos(oldKey)
+		if exist {
+			p.keys[idx] = newKey
+			return
+		}
+	}
+}
+
 func (n *node) remove(key []byte) (bool, *node) {
 	if n.isLeaf {
 		exist, idx := n.findPos(key)
@@ -194,10 +206,60 @@ func (n *node) remove(key []byte) (bool, *node) {
 	return n.gotoLeaf(key).remove(key)
 }
 
-func (n *node) merge(order int) *node {
+// return is tree empty and new root is exist
+func (n *node) merge(order int) (bool, *node) {
 	minKeys := (order+1)/2 - 1
 	if n.numKeys >= minKeys {
-		return nil
+		return false, nil
 	}
-	return nil
+
+	// current is root
+	if n.parent == nil {
+		if n.numKeys == 0 {
+			return true, nil
+		} else {
+			return false, nil
+		}
+	}
+
+	p := n.parent
+	// get pos in parent children
+	pos := -1
+	for i, nod := range p.children {
+		if nod == n {
+			pos = i
+		}
+	}
+	if pos == -1 {
+		panic("child must in parent's children")
+	}
+
+	if pos != 0 && p.children[pos-1].numKeys > minKeys { // borrow from left sibling
+
+	} else if pos != p.numKeys && p.children[pos+1].numKeys > minKeys { // borrow from right sibling
+
+	} else if pos != 0 { // merge left sibling
+
+	} else { // merge right sibling
+
+	}
+
+	return false, nil
+}
+
+func (n *node) borrowFromLeftSibling(pos int) {
+	ls := n.parent.children[pos-1]
+
+}
+
+func (n *node) borrowFromRigthSibling(pos int) {
+
+}
+
+func (n *node) mergeLeftSibling(pos int) {
+
+}
+
+func (n *node) mergeRightSibling(pos int) {
+
 }

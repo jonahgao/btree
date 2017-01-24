@@ -58,8 +58,12 @@ func (t *Btree) Delete(key []byte) error {
 	if t.root != nil {
 		b, n := t.root.remove(key)
 		if b {
-			newRoot := n.merge(t.order)
-			if newRoot != nil {
+			t.size--
+			empty, newRoot := n.merge(t.order)
+			if empty {
+				t.root = nil
+				t.height--
+			} else if newRoot != nil {
 				t.root = newRoot
 				t.height--
 			}

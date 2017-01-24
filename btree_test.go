@@ -32,4 +32,10 @@ func TestBtreePutGet(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
+
+	btree.Delete([]byte("0013"))
+	err = writeDotSvg(testDotExePath, "output2.svg", btree)
+	if err != nil {
+		t.Error(err)
+	}
 }
