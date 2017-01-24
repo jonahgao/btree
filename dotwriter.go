@@ -7,6 +7,7 @@ import (
 	"os/exec"
 )
 
+// dump btree to svg picture (use graphviz)
 func writeDotSvg(dotExePath string, outputSvg string, tree *Btree) error {
 	buffer := bytes.NewBuffer(nil)
 	err := writeDotGraph(tree.root, buffer)
@@ -56,7 +57,7 @@ digraph {
 
 	if root != nil {
 		startIndex := 0
-		err = writeDotNode(buffer, root, &startIndex)
+		_, err = writeDotNode(buffer, root, &startIndex)
 		if err != nil {
 			return err
 		}
@@ -69,31 +70,32 @@ digraph {
 	return nil
 }
 
-func writeDotNode(buf *bytes.Buffer, node *node, startIdx *int) error {
-	prevIdx := *startIdx
-	nodeStr := fmt.Sprintf("    node%d[label= \"<f0> ● ", *startIdx)
+func writeDotNode(buf *bytes.Buffer, node *node, startIdx *int) (nodeIndex int, err error) {
+	nodeIndex = *startIdx
+	nodeStr := fmt.Sprintf("    node%d[label= \"<f0> ● ", nodeIndex)
 	for i := 0; i < node.numKeys; i++ {
 		nodeStr = nodeStr + fmt.Sprintf("| %v | <f%d> ● ", string(node.keys[i]), i+1)
 	}
 	nodeStr = nodeStr + "\"]\n"
 	*startIdx = *startIdx + 1
 
-	_, err := buf.WriteString(nodeStr)
+	_, err = buf.WriteString(nodeStr)
 	if err != nil {
-		return err
+		return
 	}
 
 	for i, c := range node.children {
-		err = writeDotNode(buf, c, startIdx)
+		var idx int
+		idx, err = writeDotNode(buf, c, startIdx)
 		if err != nil {
-			return err
+			return
 		}
 
-		linkStr := fmt.Sprintf("    node%d:f%d -> node%d\n", prevIdx, i, *startIdx-1)
+		linkStr := fmt.Sprintf("    node%d:f%d -> node%d\n", nodeIndex, i, idx)
 		_, err = buf.WriteString(linkStr)
 		if err != nil {
-			return err
+			return
 		}
 	}
-	return nil
+	return
 }

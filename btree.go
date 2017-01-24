@@ -10,7 +10,7 @@ type Btree struct {
 
 // NewBtree create new btree
 func NewBtree(order int) *Btree {
-	if order <= 1 {
+	if order <= 2 {
 		panic("bad order")
 	}
 

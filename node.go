@@ -44,8 +44,6 @@ func (n *node) findPos(key []byte) int {
 }
 
 func (n *node) insertAt(idx int, key []byte, value []byte) {
-	fmt.Printf("(%d, %d) %d", len(n.keys), len(n.values), idx)
-
 	// handle keys
 	n.keys = append(n.keys, nil)
 	for i := n.numKeys - 1; i >= idx; i-- {
@@ -149,7 +147,6 @@ func (n *node) split(order int) (newRoot *node) {
 		parent.numKeys++
 		parent.keys = [][]byte{midKey}
 		parent.children = []*node{n, rc}
-
 	} else {
 		idx := parent.findPos(midKey)
 
