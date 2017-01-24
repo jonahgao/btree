@@ -1,25 +1,26 @@
 package btree
 
 import (
-	"bytes"
+	"fmt"
 	"testing"
 )
 
+var testDotExePath = "D:\\Develop\\graphviz-2.38\\bin\\dot.exe"
+
 func TestBtreePutGet(t *testing.T) {
 	btree := NewBtree(4)
-	key := []byte("mykey")
-	value := []byte("value")
-	btree.Put(key, value)
 
-	actualValue := btree.Get(key)
-	if bytes.Compare(value, actualValue) != 0 {
-		t.Errorf("expected=%v, actual=%v", string(value), string(actualValue))
+	for i := 1; i <= 9; i++ {
+		key := []byte(fmt.Sprintf("%02d", i))
+		value := []byte(fmt.Sprintf("%02d", i))
+		btree.Put(key, value)
+
 	}
 
-	btree.Put([]byte("key1"), value)
-	btree.Put([]byte("key2"), value)
-
 	// btree.dump()
-	writeDot(btree.root, "dotfile")
 
+	err := writeDotSvg(testDotExePath, "output.svg", btree)
+	if err != nil {
+		t.Error(err)
+	}
 }

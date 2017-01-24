@@ -4,38 +4,31 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"os/exec"
 )
 
-func writeDot(root *node, file string) error {
+func writeDotSvg(dotExePath string, outputSvg string, tree *Btree) error {
 	buffer := bytes.NewBuffer(nil)
-
-	//
-	_, err := buffer.WriteString(
-		`
-digraph {
-    graph [margin=0, splines=line];
-    edge [penwidth=2];
-    node [shape = record, penwidth=2, style=filled, fillcolor=white];
-
-`)
-	if err != nil {
-		return nil
-	}
-
-	startIndex := 0
-	err = writeNode(buffer, root, &startIndex)
-
-	_, err = buffer.WriteString("\n}")
+	err := writeDotGraph(tree.root, buffer)
 	if err != nil {
 		return err
 	}
 
-	f, err := os.OpenFile(file, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0666)
+	cmd := exec.Command(dotExePath, "-Tsvg")
+	cmd.Stdin = buffer
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	err = cmd.Run()
 	if err != nil {
 		return err
 	}
 
-	_, err = f.Write(buffer.Bytes())
+	f, err := os.OpenFile(outputSvg, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0666)
+	if err != nil {
+		return err
+	}
+
+	_, err = f.Write(out.Bytes())
 	if err != nil {
 		return err
 	}
@@ -48,7 +41,35 @@ digraph {
 	return f.Close()
 }
 
-func writeNode(buf *bytes.Buffer, node *node, startIdx *int) error {
+func writeDotGraph(root *node, buffer *bytes.Buffer) error {
+	_, err := buffer.WriteString(
+		`
+digraph {
+    graph [margin=0, splines=line];
+    edge [penwidth=2];
+    node [shape = record,style=filled, fillcolor=white];
+
+`)
+	if err != nil {
+		return nil
+	}
+
+	if root != nil {
+		startIndex := 0
+		err = writeDotNode(buffer, root, &startIndex)
+		if err != nil {
+			return err
+		}
+	}
+
+	_, err = buffer.WriteString("\n}")
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func writeDotNode(buf *bytes.Buffer, node *node, startIdx *int) error {
 	prevIdx := *startIdx
 	nodeStr := fmt.Sprintf("    node%d[label= \"<f0> ● ", *startIdx)
 	for i := 0; i < node.numKeys; i++ {
@@ -63,7 +84,7 @@ func writeNode(buf *bytes.Buffer, node *node, startIdx *int) error {
 	}
 
 	for i, c := range node.children {
-		err = writeNode(buf, c, startIdx)
+		err = writeDotNode(buf, c, startIdx)
 		if err != nil {
 			return err
 		}

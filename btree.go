@@ -2,9 +2,10 @@ package btree
 
 //Btree btree
 type Btree struct {
-	order int
-	root  *node
-	size  int
+	order  int
+	root   *node
+	size   int // nums of kv pair
+	height int // tree height
 }
 
 // NewBtree create new btree
@@ -35,6 +36,7 @@ func (t *Btree) Put(key []byte, value []byte) error {
 			values:  [][]byte{value},
 		}
 		t.size++
+		t.height++
 		return nil
 	}
 
@@ -42,7 +44,12 @@ func (t *Btree) Put(key []byte, value []byte) error {
 	if !exist {
 		t.size++
 	}
-	n.split(t.order)
+
+	newRoot := n.split(t.order)
+	if newRoot != nil {
+		t.height++
+		t.root = newRoot
+	}
 	return nil
 }
 

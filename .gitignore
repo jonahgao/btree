@@ -23,5 +23,4 @@ _testmain.go
 *.test
 *.prof
 
-dotfile
-output.png
+output.svg
