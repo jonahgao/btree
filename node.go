@@ -251,10 +251,11 @@ func (n *node) mergeOrRedistribute(order int) (bool, *node) {
 	}
 
 	if leftSibling != nil && leftSibling.numKeys > minKeys { // borrowFromLeftSibling
-		// borrow key from paranet
-		borrowKey := p.keys[pos-1]
+		var borrowKey []byte
 		if n.isLeaf {
 			borrowKey = leftSibling.keys[leftSibling.numKeys-1]
+		} else {
+			borrowKey = p.keys[pos-1]
 		}
 
 		n.insertKeyAt(0, borrowKey)
@@ -276,8 +277,6 @@ func (n *node) mergeOrRedistribute(order int) (bool, *node) {
 		} else {
 			leftSibling.children = leftSibling.children[:len(leftSibling.children)-1]
 		}
-
-		return p.mergeOrRedistribute(order)
 	} else if rightSibling != nil && rightSibling.numKeys > minKeys { // borrowFromRightSibling
 		// borrow key from paranet
 		borrowKey := p.keys[pos]
@@ -303,12 +302,53 @@ func (n *node) mergeOrRedistribute(order int) (bool, *node) {
 		} else {
 			rightSibling.children = rightSibling.children[1:]
 		}
+	} else { // MERGE
+		var left *node
+		var right *node
+		mergePos := -1
+		if leftSibling != nil {
+			left = leftSibling
+			right = n
+			mergePos = pos - 1
+		} else {
+			left = n
+			right = rightSibling
+			mergePos = pos
+		}
 
-		return p.mergeOrRedistribute(order)
-	} else if leftSibling != nil { // merge left sibling
+		// merged node is left
+		if left.isLeaf {
+			for _, k := range right.keys {
+				left.keys = append(left.keys, k)
+				left.numKeys++
+			}
+			for _, v := range right.values {
+				left.values = append(left.values, v)
+			}
+		} else {
+			left.keys = append(left.keys, p.keys[mergePos])
+			left.numKeys++
+			for _, k := range right.keys {
+				left.keys = append(left.keys, k)
+				left.numKeys++
+			}
+			for _, c := range right.children {
+				left.children = append(left.children, c)
+			}
+		}
 
-	} else { // merge right sibling
+		for i := mergePos; i < p.numKeys-1; i++ {
+			p.keys[i] = p.keys[i+1]
+		}
+		p.keys = p.keys[:p.numKeys-1]
+		p.numKeys--
+
+		childLen := len(p.children)
+		for i := mergePos + 1; i < childLen-1; i++ {
+			p.children[i] = p.children[i+1]
+		}
+		p.children = p.children[:childLen-1]
 	}
 
-	return false, nil
+	return p.mergeOrRedistribute(order)
 }
