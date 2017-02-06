@@ -62,4 +62,11 @@ func TestBtreePutGet(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
+
+	for i := 1; i <= n; i++ {
+		key := []byte(fmt.Sprintf("%04d", i))
+
+		actualValue := btree.Get(key)
+		fmt.Printf("%s:%s\n", string(key), string(actualValue))
+	}
 }
