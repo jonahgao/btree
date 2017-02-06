@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-var testDotExePath = "D:\\Develop\\graphviz-2.38\\bin\\dot.exe"
+var testDotExePath = "dot"
 
 func TestBtreePutGet(t *testing.T) {
 	m := 4
@@ -35,6 +35,12 @@ func TestBtreePutGet(t *testing.T) {
 
 	btree.Delete([]byte("0013"))
 	err = writeDotSvg(testDotExePath, "output2.svg", btree)
+	if err != nil {
+		t.Error(err)
+	}
+
+	btree.Delete([]byte("0014"))
+	err = writeDotSvg(testDotExePath, "output3.svg", btree)
 	if err != nil {
 		t.Error(err)
 	}

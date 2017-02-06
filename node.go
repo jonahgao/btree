@@ -52,22 +52,33 @@ func (n *node) getValue(key []byte) []byte {
 	return n.gotoLeaf(key).getValue(key)
 }
 
-func (n *node) insertAt(idx int, key []byte, value []byte) {
-	// handle keys
+func (n *node) insertKeyAt(idx int, key []byte) {
+	lastCnt := len(n.keys)
 	n.keys = append(n.keys, nil)
-	for i := n.numKeys - 1; i >= idx; i-- {
+	for i := lastCnt - 1; i >= idx; i-- {
 		n.keys[i+1] = n.keys[i]
 	}
 	n.keys[idx] = key
+}
 
-	if n.isLeaf {
-		n.values = append(n.values, nil)
-		// move backward
-		for i := n.numKeys - 1; i >= idx; i-- {
-			n.values[i+1] = n.values[i]
-		}
-		n.values[idx] = value
+func (n *node) insertValueAt(idx int, value []byte) {
+	lastCnt := len(n.values)
+	n.values = append(n.values, nil)
+	// move backward
+	for i := lastCnt - 1; i >= idx; i-- {
+		n.values[i+1] = n.values[i]
 	}
+	n.values[idx] = value
+}
+
+func (n *node) insertChildAt(idx int, child *node) {
+	lastCnt := len(n.children)
+	n.children = append(n.children, nil)
+	// move backward
+	for i := lastCnt - 1; i >= idx; i-- {
+		n.children[i+1] = n.children[i]
+	}
+	n.children[idx] = child
 }
 
 // if key is already exist return false, otherwise return true
@@ -80,7 +91,8 @@ func (n *node) insert(key, value []byte) (bool, *node) {
 			return false, n
 		}
 		// add
-		n.insertAt(idx, key, value)
+		n.insertKeyAt(idx, key)
+		n.insertValueAt(idx, value)
 		n.numKeys++
 		return true, n
 	}
@@ -158,7 +170,7 @@ func (n *node) split(order int) (newRoot *node) {
 		}
 		parent.children[idx+1] = rc
 
-		parent.insertAt(idx, midKey, nil)
+		parent.insertKeyAt(idx, midKey)
 		parent.numKeys++
 	}
 
@@ -181,18 +193,6 @@ func (n *node) removeAt(idx int) {
 	n.numKeys--
 }
 
-// only for leaf
-func (n *node) updateLeftMost(oldKey []byte) {
-	newKey := n.keys[0]
-	for p := n.parent; p != nil; p = p.parent {
-		exist, idx := p.findPos(oldKey)
-		if exist {
-			p.keys[idx] = newKey
-			return
-		}
-	}
-}
-
 func (n *node) remove(key []byte) (bool, *node) {
 	if n.isLeaf {
 		exist, idx := n.findPos(key)
@@ -207,7 +207,7 @@ func (n *node) remove(key []byte) (bool, *node) {
 }
 
 // return is tree empty and new root is exist
-func (n *node) merge(order int) (bool, *node) {
+func (n *node) mergeOrRedistribute(order int) (bool, *node) {
 	minKeys := (order+1)/2 - 1
 	if n.numKeys >= minKeys {
 		return false, nil
@@ -216,10 +216,17 @@ func (n *node) merge(order int) (bool, *node) {
 	// current is root
 	if n.parent == nil {
 		if n.numKeys == 0 {
-			return true, nil
-		} else {
-			return false, nil
+			if n.isLeaf {
+				return true, nil
+			}
+
+			// only one children
+			newRoot := n.children[0]
+			newRoot.parent = nil
+			return false, newRoot
 		}
+
+		return false, nil
 	}
 
 	p := n.parent
@@ -234,32 +241,74 @@ func (n *node) merge(order int) (bool, *node) {
 		panic("child must in parent's children")
 	}
 
-	if pos != 0 && p.children[pos-1].numKeys > minKeys { // borrow from left sibling
+	var leftSibling *node
+	var rightSibling *node
+	if pos != 0 {
+		leftSibling = p.children[pos-1]
+	}
+	if pos != p.numKeys {
+		rightSibling = p.children[pos+1]
+	}
 
-	} else if pos != p.numKeys && p.children[pos+1].numKeys > minKeys { // borrow from right sibling
+	if leftSibling != nil && leftSibling.numKeys > minKeys { // borrowFromLeftSibling
+		// borrow key from paranet
+		borrowKey := p.keys[pos-1]
+		if n.isLeaf {
+			borrowKey = leftSibling.keys[leftSibling.numKeys-1]
+		}
 
-	} else if pos != 0 { // merge left sibling
+		n.insertKeyAt(0, borrowKey)
+		n.numKeys++
+		if n.isLeaf {
+			n.insertValueAt(0, leftSibling.values[leftSibling.numKeys-1])
+		} else {
+			n.insertChildAt(0, leftSibling.children[len(leftSibling.children)-1])
+		}
+
+		// set parent key to left sibling's last key
+		p.keys[pos-1] = leftSibling.keys[leftSibling.numKeys-1]
+
+		// remove left sibling last key, value or children
+		leftSibling.keys = leftSibling.keys[:leftSibling.numKeys-1]
+		leftSibling.numKeys--
+		if leftSibling.isLeaf {
+			leftSibling.values = leftSibling.values[:len(leftSibling.values)-1]
+		} else {
+			leftSibling.children = leftSibling.children[:len(leftSibling.children)-1]
+		}
+
+		return p.mergeOrRedistribute(order)
+	} else if rightSibling != nil && rightSibling.numKeys > minKeys { // borrowFromRightSibling
+		// borrow key from paranet
+		borrowKey := p.keys[pos]
+
+		n.insertKeyAt(n.numKeys, borrowKey)
+		n.numKeys++
+		if n.isLeaf {
+			n.values = append(n.values, rightSibling.values[0])
+		} else {
+			n.children = append(n.children, rightSibling.children[0])
+		}
+
+		if n.isLeaf {
+			p.keys[pos] = rightSibling.keys[1]
+		} else {
+			p.keys[pos] = rightSibling.keys[0]
+		}
+
+		rightSibling.keys = rightSibling.keys[1:]
+		rightSibling.numKeys--
+		if rightSibling.isLeaf {
+			rightSibling.values = rightSibling.values[1:]
+		} else {
+			rightSibling.children = rightSibling.children[1:]
+		}
+
+		return p.mergeOrRedistribute(order)
+	} else if leftSibling != nil { // merge left sibling
 
 	} else { // merge right sibling
-
 	}
 
 	return false, nil
-}
-
-func (n *node) borrowFromLeftSibling(pos int) {
-	ls := n.parent.children[pos-1]
-
-}
-
-func (n *node) borrowFromRigthSibling(pos int) {
-
-}
-
-func (n *node) mergeLeftSibling(pos int) {
-
-}
-
-func (n *node) mergeRightSibling(pos int) {
-
 }
