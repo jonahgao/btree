@@ -5,8 +5,8 @@ type internalNode struct {
 	children []node
 }
 
-func newInternalNode(t *btree, p node, r uint64) *leafNode {
-	return &leafNode{
+func newInternalNode(t *btree, p node, r uint64) *internalNode {
+	return &internalNode{
 		tree:     t,
 		parent:   p,
 		revision: r,
@@ -36,4 +36,19 @@ func (n *internalNode) insertChildAt(idx int, child node) {
 		n.children[i+1] = n.children[i]
 	}
 	n.children[idx] = child
+}
+
+func (n *internalNode) clone(revision uint64) *internalNode {
+	newINode := newInternalNode(n.tree, n.parent, revision)
+	for _, k := range n.keys {
+		newINode.keys = append(newINode.keys, k)
+	}
+	for _, c := range n.children {
+		newINode.children = append(newINode.children, c)
+	}
+}
+
+func (n *internalNode) insert(key, value []byte, revision uint64) *insertResult {
+	//TODO:
+	return nil
 }

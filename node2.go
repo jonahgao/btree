@@ -6,7 +6,7 @@ type node2 struct {
 	isLeaf   bool
 	numKeys  int
 	parent   *node
-	children nodes
+	children []
 	keys     [][]byte
 	values   [][]byte
 }

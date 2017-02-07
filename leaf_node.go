@@ -36,3 +36,44 @@ func (n *leafNode) insertValueAt(idx int, value []byte) {
 	}
 	n.values[idx] = value
 }
+
+func (n *leafNode) clone(revision uint64) *leafNode {
+	newLeaf := newLeafNode(n.tree, n.parent, revision)
+	for _, k := range n.keys {
+		newLeaf.keys = append(newLeaf.keys, k)
+	}
+	for _, v := range n.values {
+		newLeaf.values = append(newLeaf.values, v)
+	}
+}
+
+func (n *leafNode) replaceValue(pos int, value []byte, revision uint64) *insertResult {
+	newLeaf := n
+	if n.revision != revision {
+		newLeaf = n.clone(revision)
+	}
+	newLeaf.values[pos] = value
+
+	return &insertResult{
+		rtype:    iRTypeModified,
+		modified: newLeaf,
+	}
+}
+
+func (n *leafNode) addValue(pos int, key, value []byte, revision uint64) *insertResult {
+
+}
+
+func (n *leafNode) addAndSplit(pos int, key, value []byte, revision uint64) *insertResult {
+}
+
+func (n *leafNode) insert(key, value []byte, revision uint64) *insertResult {
+	exist, pos := n.findPos(key)
+	if exist {
+		return n.replaceValue()
+	} else if len(n.keys)+1 <= n.maxKeys() {
+		return n.addValue(pos, key, value, revsion)
+	} else {
+		return n.addAndSplit(pos, key, value, revision)
+	}
+}
