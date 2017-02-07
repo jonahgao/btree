@@ -5,6 +5,16 @@ type leafNode struct {
 	values [][]byte
 }
 
+func newLeafNode(t *btree, p node, r uint64) *leafNode {
+	return &leafNode{
+		tree:     t,
+		parent:   p,
+		revision: r,
+		keys:     make([][]byte, 0, t.order-1),
+		values:   make([][]byte, 0, t.order-1),
+	}
+}
+
 func (n *leafNode) isLeaf() bool {
 	return true
 }

@@ -5,6 +5,16 @@ type internalNode struct {
 	children []node
 }
 
+func newInternalNode(t *btree, p node, r uint64) *leafNode {
+	return &leafNode{
+		tree:     t,
+		parent:   p,
+		revision: r,
+		keys:     make([][]byte, 0, t.order-1),
+		children: make([]node, 0, t.order),
+	}
+}
+
 func (n *internalNode) isLeaf() bool {
 	return false
 }

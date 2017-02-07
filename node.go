@@ -9,7 +9,7 @@ type node interface {
 }
 
 type baseNode struct {
-	tree     *MVCCBtree
+	tree     *btree
 	parent   node
 	revision uint64
 	keys     [][]byte
