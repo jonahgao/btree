@@ -9,6 +9,7 @@ type node interface {
 
 	get([]byte) []byte
 	insert([]byte, []byte, uint64) *insertResult
+	delete([]byte, uint64, node, int) *deleteResult
 }
 
 type baseNode struct {
@@ -58,4 +59,22 @@ func (n *baseNode) insertKeyAt(idx int, key []byte) {
 		n.keys[i+1] = n.keys[i]
 	}
 	n.keys[idx] = key
+}
+
+func (n *baseNode) selectSibling(parent node, parentPos int) int {
+	if parentPos == 0 {
+		return 1
+	}
+
+	if parentPos == parent.numOfKeys() {
+		return parentPos - 1
+	}
+
+	leftSibling := (parent.(*internalNode)).childAt(parentPos - 1)
+	rightSibling := (parent.(*internalNode)).childAt(parentPos + 1)
+	if leftSibling.numOfKeys() >= rightSibling.numOfKeys() {
+		return parentPos - 1
+	} else {
+		return parentPos + 1
+	}
 }

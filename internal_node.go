@@ -39,6 +39,10 @@ func (n *internalNode) insertChildAt(idx int, child node) {
 	n.children[idx] = child
 }
 
+func (n *internalNode) childAt(idx int) node {
+	return n.children[idx]
+}
+
 func (n *internalNode) clone(revision uint64) *internalNode {
 	newINode := newInternalNode(n.tree, revision)
 	for _, k := range n.keys {
@@ -179,10 +183,14 @@ func (n *internalNode) insert(key, value []byte, revision uint64) *insertResult 
 	if childIResult.rtype == iRTypeModified { // modified result
 		return n.replaceChild(pos, childIResult, revision)
 	} else { // split result
-		if len(n.keys)+1 <= n.maxKeys() {
+		if len(n.keys) < n.maxKeys() {
 			return n.insertChild(pos, childIResult, revision)
 		} else {
 			return n.addAndSplit(pos, childIResult, revision)
 		}
 	}
+}
+
+func (n *internalNode) delete(key []byte, revision uint64, parent node, parentPos int) *deleteResult {
+	return nil
 }
