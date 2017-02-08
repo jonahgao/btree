@@ -5,8 +5,10 @@ const (
 	iRTypeModified = 2
 	iRTypeSplit    = 3
 
-	dRTypeNotPresent = 10
-	dRTypeRemoved    = 11
+	dRTypeNotPresent      = 11
+	dRTypeRemoved         = 12
+	dRTypeBorrowFromLeft  = 13
+	dRTypeBorrowFromRight = 14
 )
 
 type insertResult struct {
@@ -18,6 +20,7 @@ type insertResult struct {
 }
 
 type deleteResult struct {
-	rtype    int
-	modified node
+	rtype           int
+	modified        node
+	modifiedSibling node
 }

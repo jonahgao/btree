@@ -156,11 +156,64 @@ func (n *leafNode) removeValue(pos int, revision uint64) *deleteResult {
 }
 
 func (n *leafNode) borrowFromLeft(pos int, revision uint64, sibling *leafNode) *deleteResult {
-	return nil
+	newLeaf := newLeafNode(n.tree, revision)
+	newSibling := newLeafNode(n.tree, revision)
+
+	// copy to new sibling
+	for i := 0; i < len(sibling.keys)-1; i++ {
+		newSibling.keys = append(newSibling.keys, sibling.keys[i])
+		newSibling.values = append(newSibling.values, sibling.values[i])
+	}
+
+	// insert borrowed kv
+	newLeaf.keys = append(newLeaf.keys, sibling.keys[sibling.numOfKeys()-1])
+	newLeaf.values = append(newLeaf.values, sibling.values[len(sibling.keys)-1])
+	// copy kv before pos from n
+	for i := 0; i < pos; i++ {
+		newLeaf.keys = append(newLeaf.keys, n.keys[i])
+		newLeaf.values = append(newLeaf.values, n.values[i])
+	}
+	// copy kv after pos from n
+	for i := pos + 1; i < len(n.keys); i++ {
+		newLeaf.keys = append(newLeaf.keys, n.keys[i])
+		newLeaf.values = append(newLeaf.values, n.values[i])
+	}
+
+	return &deleteResult{
+		rtype:           dRTypeBorrowFromLeft,
+		modified:        newLeaf,
+		modifiedSibling: newSibling,
+	}
 }
 
 func (n *leafNode) borrowFromRight(pos int, revision uint64, sibling *leafNode) *deleteResult {
-	return nil
+	newSibling := newLeafNode(n.tree, revision)
+	// copy kv to new sibling
+	for i := 1; i < len(sibling.keys); i++ {
+		newSibling.keys = append(newSibling.keys, sibling.keys[i])
+		newSibling.values = append(newSibling.values, sibling.values[i])
+	}
+
+	newLeaf := newLeafNode(n.tree, revision)
+	// copy kv before pos from n
+	for i := 0; i < pos; i++ {
+		newLeaf.keys = append(newLeaf.keys, n.keys[i])
+		newLeaf.values = append(newLeaf.values, n.values[i])
+	}
+	// copy kv after pos from n
+	for i := pos + 1; i < len(n.keys); i++ {
+		newLeaf.keys = append(newLeaf.keys, n.keys[i])
+		newLeaf.values = append(newLeaf.values, n.values[i])
+	}
+	// insert borrowed kv
+	newLeaf.keys = append(newLeaf.keys, sibling.keys[0])
+	newLeaf.values = append(newLeaf.values, sibling.values[0])
+
+	return &deleteResult{
+		rtype:           dRTypeBorrowFromRight,
+		modified:        newLeaf,
+		modifiedSibling: newSibling,
+	}
 }
 
 func (n *leafNode) merge() *deleteResult {
