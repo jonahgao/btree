@@ -7,9 +7,11 @@ type internalNode struct {
 
 func newInternalNode(t *MVCCBtree, r uint64) *internalNode {
 	return &internalNode{
-		tree:     t,
-		revision: r,
-		keys:     make([][]byte, 0, t.order-1),
+		baseNode: baseNode{
+			tree:     t,
+			revision: r,
+			keys:     make([][]byte, 0, t.order-1),
+		},
 		children: make([]node, 0, t.order),
 	}
 }
@@ -18,7 +20,7 @@ func (n *internalNode) isLeaf() bool {
 	return false
 }
 
-func (n *internalNode) get([]byte) []byte {
+func (n *internalNode) get(key []byte) []byte {
 	exist, idx := n.findPos(key)
 	// equal: go to right
 	if exist {
@@ -45,6 +47,7 @@ func (n *internalNode) clone(revision uint64) *internalNode {
 	for _, c := range n.children {
 		newINode.children = append(newINode.children, c)
 	}
+	return newINode
 }
 
 func (n *internalNode) replaceChild(pos int, childIResult *insertResult, revision uint64) *insertResult {
@@ -74,7 +77,7 @@ func (n *internalNode) insertChild(pos int, childIResult *insertResult, revision
 	}
 	newNode.children = append(newNode.children, childIResult.left)
 	newNode.children = append(newNode.children, childIResult.right)
-	for i := pos + 1; i < len(n.keys); i++ {
+	for i := pos + 1; i < len(n.children); i++ {
 		newNode.children = append(newNode.children, n.children[i])
 	}
 
@@ -88,12 +91,82 @@ func (n *internalNode) addAndSplit(pos int, childIResult *insertResult, revision
 	leftNode := newInternalNode(n.tree, revision)
 	rightNode := newInternalNode(n.tree, revision)
 	middle := n.splitPivot()
+	var pivot []byte
 	if pos < middle {
+		// left
+		for i := 0; i < pos; i++ {
+			leftNode.keys = append(leftNode.keys, n.keys[i])
+			leftNode.children = append(leftNode.children, n.children[i])
+		}
+		leftNode.keys = append(leftNode.keys, childIResult.pivot)
+		leftNode.children = append(leftNode.children, childIResult.left)
+		leftNode.children = append(leftNode.children, childIResult.right)
+		for i := pos; i < middle-1; i++ {
+			leftNode.keys = append(leftNode.keys, n.keys[i])
+		}
+		for i := pos + 1; i < middle; i++ {
+			leftNode.children = append(leftNode.children, n.children[i])
+		}
 
+		// right
+		for i := middle; i < len(n.keys); i++ {
+			rightNode.keys = append(rightNode.keys, n.keys[i])
+		}
+		for i := middle; i < len(n.children); i++ {
+			rightNode.children = append(rightNode.children, n.children[i])
+		}
+
+		pivot = n.keys[middle-1]
 	} else if pos == middle {
+		for i := 0; i < middle; i++ {
+			leftNode.keys = append(leftNode.keys, n.keys[i])
+			leftNode.children = append(leftNode.children, n.children[i])
+		}
+		leftNode.children = append(leftNode.children, childIResult.left)
 
+		// right
+		for i := middle; i < len(n.keys); i++ {
+			rightNode.keys = append(rightNode.keys, n.keys[i])
+		}
+		rightNode.children = append(rightNode.children, childIResult.right)
+		for i := middle + 1; i < len(n.children); i++ {
+			rightNode.children = append(rightNode.children, n.children[i])
+		}
+
+		pivot = childIResult.pivot
 	} else {
+		// left
+		for i := 0; i < middle; i++ {
+			leftNode.keys = append(leftNode.keys, n.keys[i])
+		}
+		for i := 0; i < middle+1; i++ {
+			leftNode.children = append(leftNode.children, n.children[i])
+		}
 
+		// right
+		for i := middle + 1; i < pos; i++ {
+			rightNode.keys = append(rightNode.keys, n.keys[i])
+			rightNode.children = append(rightNode.children, n.children[i])
+		}
+		rightNode.keys = append(rightNode.keys, childIResult.pivot)
+		rightNode.children = append(rightNode.children, childIResult.left)
+		rightNode.children = append(rightNode.children, childIResult.right)
+
+		for i := pos; i < len(n.keys); i++ {
+			rightNode.keys = append(rightNode.keys, n.keys[i])
+		}
+		for i := pos + 1; i < len(n.children); i++ {
+			rightNode.children = append(rightNode.children, n.children[i])
+		}
+
+		pivot = n.keys[middle]
+	}
+
+	return &insertResult{
+		rtype: iRTypeSplit,
+		left:  leftNode,
+		right: rightNode,
+		pivot: pivot,
 	}
 }
 

@@ -3,70 +3,59 @@ package btree
 import (
 	"bytes"
 	"fmt"
+	"math/rand"
 	"testing"
+	"time"
 )
 
 var testDotExePath = "dot"
+
+func TestBtreeRandPutGet(t *testing.T) {
+	m := 5
+	n := 20
+
+	rnd := rand.New(rand.NewSource(time.Now().UnixNano()))
+	results := make(map[string]string)
+
+	btree := NewMVCCBtree(m)
+	for i := 1; i <= n; i++ {
+		r := rnd.Int() % 1000
+		key := []byte(fmt.Sprintf("%04d", r))
+		value := []byte(fmt.Sprintf("Value%04d", r))
+		results[string(key)] = string(value)
+		btree.Put(key, value)
+		fmt.Printf("Put %d\n", r)
+		writeDotSvg(testDotExePath, fmt.Sprintf("%02d.svg", i), btree)
+	}
+
+	for k, v := range results {
+		value := btree.Get([]byte(k))
+		if string(value) != v {
+			t.Errorf("expected=%v, actual=%v", v, string(value))
+		}
+	}
+}
 
 func TestBtreePutGet(t *testing.T) {
 	m := 4
 	n := 20
 
-	btree := NewBtree(m)
+	btree := NewMVCCBtree(m)
+
 	for i := 1; i <= n; i++ {
 		key := []byte(fmt.Sprintf("%04d", i))
-		value := []byte(fmt.Sprintf("%04d", i))
+		value := []byte(fmt.Sprintf("Value%04d", i))
 		btree.Put(key, value)
 	}
 
 	for i := 1; i <= n; i++ {
 		key := []byte(fmt.Sprintf("%04d", i))
-		expectedValue := []byte(fmt.Sprintf("%04d", i))
+		expectedValue := []byte(fmt.Sprintf("Value%04d", i))
 		actualValue := btree.Get(key)
 		if bytes.Compare(expectedValue, actualValue) != 0 {
 			t.Errorf("expected=%v, actual=%v", string(expectedValue), string(actualValue))
 		}
 	}
 
-	err := writeDotSvg(testDotExePath, "output.svg", btree)
-	if err != nil {
-		t.Error(err)
-	}
-
-	btree.Delete([]byte("0013"))
-	err = writeDotSvg(testDotExePath, "output2.svg", btree)
-	if err != nil {
-		t.Error(err)
-	}
-
-	btree.Delete([]byte("0014"))
-	err = writeDotSvg(testDotExePath, "output3.svg", btree)
-	if err != nil {
-		t.Error(err)
-	}
-
-	btree.Delete([]byte("0015"))
-	err = writeDotSvg(testDotExePath, "output4.svg", btree)
-	if err != nil {
-		t.Error(err)
-	}
-
-	btree.Delete([]byte("0017"))
-	err = writeDotSvg(testDotExePath, "output5.svg", btree)
-	if err != nil {
-		t.Error(err)
-	}
-
-	btree.Delete([]byte("0018"))
-	err = writeDotSvg(testDotExePath, "output6.svg", btree)
-	if err != nil {
-		t.Error(err)
-	}
-
-	for i := 1; i <= n; i++ {
-		key := []byte(fmt.Sprintf("%04d", i))
-
-		actualValue := btree.Get(key)
-		fmt.Printf("%s:%s\n", string(key), string(actualValue))
-	}
+	writeDotSvg(testDotExePath, "output.svg", btree)
 }

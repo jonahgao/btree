@@ -8,9 +8,9 @@ import (
 )
 
 // dump btree to svg picture (use graphviz)
-func writeDotSvg(dotExePath string, outputSvg string, tree *Btree) error {
+func writeDotSvg(dotExePath string, outputSvg string, tree *MVCCBtree) error {
 	buffer := bytes.NewBuffer(nil)
-	err := writeDotGraph(tree.root, buffer)
+	err := writeDotGraph(tree.GetTree().root, buffer)
 	if err != nil {
 		return err
 	}
@@ -42,7 +42,7 @@ func writeDotSvg(dotExePath string, outputSvg string, tree *Btree) error {
 	return f.Close()
 }
 
-func writeDotGraph(root *node, buffer *bytes.Buffer) error {
+func writeDotGraph(root node, buffer *bytes.Buffer) error {
 	_, err := buffer.WriteString(
 		`
 digraph {
@@ -70,11 +70,11 @@ digraph {
 	return nil
 }
 
-func writeDotNode(buf *bytes.Buffer, node *node, startIdx *int) (nodeIndex int, err error) {
+func writeDotNode(buf *bytes.Buffer, node node, startIdx *int) (nodeIndex int, err error) {
 	nodeIndex = *startIdx
 	nodeStr := fmt.Sprintf("    node%d[label= \"<f0> ● ", nodeIndex)
-	for i := 0; i < node.numKeys; i++ {
-		nodeStr = nodeStr + fmt.Sprintf("| %v | <f%d> ● ", string(node.keys[i]), i+1)
+	for i := 0; i < node.numOfKeys(); i++ {
+		nodeStr = nodeStr + fmt.Sprintf("| %v | <f%d> ● ", string(node.keyAt(i)), i+1)
 	}
 	nodeStr = nodeStr + "\"]\n"
 	*startIdx = *startIdx + 1
@@ -84,17 +84,20 @@ func writeDotNode(buf *bytes.Buffer, node *node, startIdx *int) (nodeIndex int, 
 		return
 	}
 
-	for i, c := range node.children {
-		var idx int
-		idx, err = writeDotNode(buf, c, startIdx)
-		if err != nil {
-			return
-		}
+	if !node.isLeaf() {
+		n := node.(*internalNode)
+		for i, c := range n.children {
+			var idx int
+			idx, err = writeDotNode(buf, c, startIdx)
+			if err != nil {
+				return
+			}
 
-		linkStr := fmt.Sprintf("    node%d:f%d -> node%d\n", nodeIndex, i, idx)
-		_, err = buf.WriteString(linkStr)
-		if err != nil {
-			return
+			linkStr := fmt.Sprintf("    node%d:f%d -> node%d\n", nodeIndex, i, idx)
+			_, err = buf.WriteString(linkStr)
+			if err != nil {
+				return
+			}
 		}
 	}
 	return

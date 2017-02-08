@@ -7,10 +7,12 @@ type leafNode struct {
 
 func newLeafNode(t *MVCCBtree, r uint64) *leafNode {
 	return &leafNode{
-		tree:     t,
-		revision: r,
-		keys:     make([][]byte, 0, t.order-1),
-		values:   make([][]byte, 0, t.order-1),
+		baseNode: baseNode{
+			tree:     t,
+			revision: r,
+			keys:     make([][]byte, 0, t.order-1),
+		},
+		values: make([][]byte, 0, t.order-1),
 	}
 }
 
@@ -18,7 +20,7 @@ func (n *leafNode) isLeaf() bool {
 	return true
 }
 
-func (n *leafNode) get([]byte) []byte {
+func (n *leafNode) get(key []byte) []byte {
 	exist, idx := n.findPos(key)
 	if !exist {
 		return nil
@@ -44,6 +46,7 @@ func (n *leafNode) clone(revision uint64) *leafNode {
 	for _, v := range n.values {
 		newLeaf.values = append(newLeaf.values, v)
 	}
+	return newLeaf
 }
 
 func (n *leafNode) replaceValue(pos int, value []byte, revision uint64) *insertResult {
@@ -127,9 +130,9 @@ func (n *leafNode) addAndSplit(pos int, key, value []byte, revision uint64) *ins
 func (n *leafNode) insert(key, value []byte, revision uint64) *insertResult {
 	exist, pos := n.findPos(key)
 	if exist {
-		return n.replaceValue()
+		return n.replaceValue(pos, value, revision)
 	} else if len(n.keys)+1 <= n.maxKeys() {
-		return n.addValue(pos, key, value, revsion)
+		return n.addValue(pos, key, value, revision)
 	} else {
 		return n.addAndSplit(pos, key, value, revision)
 	}

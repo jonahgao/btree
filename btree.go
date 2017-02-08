@@ -1,37 +1,82 @@
 package btree
 
-type btreeHeader struct {
-	mbtree   *MVCCBtree
-	root     node
-	revision uint64
+import (
+	"sync"
+)
+
+type Snapshot interface {
+	Get(key []byte) []byte
 }
 
-func initBtreeHeader(mbtree *MVCCBtree, revision uint64, key, value []byte) *btree {
-	tree := &btree{
-		mbtree:   mbtree,
-		revision: revision,
-		order:    mbtree.GetOrder(),
+type Iterator interface {
+	Next() bool
+	Key() []byte
+	Value() []byte
+	Error() error
+}
+
+type MVCCBtree struct {
+	order           int
+	currentTree     *btreeHeader
+	currentRevision uint64
+	metaLock        sync.RWMutex
+	writeLock       sync.Mutex
+}
+
+func NewMVCCBtree(order int) *MVCCBtree {
+	if order <= 2 {
+		panic("bad order")
 	}
 
-	root := newLeafNode(mbtree, nil, revision)
-	root.insertKeyAt(0, key)
-	root.insertValueAt(0, value)
-	tree.root = root
-
-	return tree
-}
-
-func (h *btreeHeader) GetRevision() uint64 {
-	return h.revision
-}
-
-func (h *btreeHeader) GetOrder() int {
-	return h.mbtree.GetOrder()
-}
-
-func (h *btreeHeader) Get(key []byte) []byte {
-	if h == nil || h.root == nil {
-		return nil
+	return &MVCCBtree{
+		order: order,
 	}
-	return h.root.getValue(key)
+}
+
+func (mt *MVCCBtree) GetOrder() int {
+	return mt.order
+}
+
+func (mt *MVCCBtree) GetTree() *btreeHeader {
+	mt.metaLock.RLock()
+	t := mt.currentTree
+	mt.metaLock.RUnlock()
+	return t
+}
+
+func (mt *MVCCBtree) putTree(bt *btreeHeader) {
+	mt.metaLock.Lock()
+	if mt.currentTree == nil || bt.GetRevision() > mt.currentTree.GetRevision() {
+		mt.currentTree = bt
+	}
+	mt.metaLock.Unlock()
+}
+
+func (mt *MVCCBtree) GetSnapshot() Snapshot {
+	return mt.GetTree()
+}
+
+func (mt *MVCCBtree) Get(key []byte) []byte {
+	return mt.GetTree().Get(key)
+}
+
+func (mt *MVCCBtree) Put(key []byte, value []byte) {
+	mt.writeLock.Lock()
+
+	mt.currentRevision++
+
+	oldTree := mt.GetTree()
+	if oldTree == nil {
+		oldTree = &btreeHeader{
+			mbtree: mt,
+		}
+	}
+	mt.putTree(oldTree.put(key, value, mt.currentRevision))
+
+	mt.writeLock.Unlock()
+}
+
+func (mt *MVCCBtree) Delete(key []byte) {
+	mt.writeLock.Lock()
+	defer mt.writeLock.Unlock()
 }

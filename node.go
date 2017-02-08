@@ -4,6 +4,9 @@ import "bytes"
 
 type node interface {
 	isLeaf() bool
+	keyAt(int) []byte
+	numOfKeys() int
+
 	get([]byte) []byte
 	insert([]byte, []byte, uint64) *insertResult
 }
@@ -20,6 +23,14 @@ func (n *baseNode) minKeys() int {
 
 func (n *baseNode) maxKeys() int {
 	return n.tree.GetOrder() - 1
+}
+
+func (n *baseNode) keyAt(pos int) []byte {
+	return n.keys[pos]
+}
+
+func (n *baseNode) numOfKeys() int {
+	return len(n.keys)
 }
 
 func (n *baseNode) splitPivot() int {
