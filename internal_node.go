@@ -5,10 +5,9 @@ type internalNode struct {
 	children []node
 }
 
-func newInternalNode(t *MVCCBtree, p node, r uint64) *internalNode {
+func newInternalNode(t *MVCCBtree, r uint64) *internalNode {
 	return &internalNode{
 		tree:     t,
-		parent:   p,
 		revision: r,
 		keys:     make([][]byte, 0, t.order-1),
 		children: make([]node, 0, t.order),
@@ -39,7 +38,7 @@ func (n *internalNode) insertChildAt(idx int, child node) {
 }
 
 func (n *internalNode) clone(revision uint64) *internalNode {
-	newINode := newInternalNode(n.tree, n.parent, revision)
+	newINode := newInternalNode(n.tree, revision)
 	for _, k := range n.keys {
 		newINode.keys = append(newINode.keys, k)
 	}
@@ -51,11 +50,50 @@ func (n *internalNode) clone(revision uint64) *internalNode {
 func (n *internalNode) replaceChild(pos int, childIResult *insertResult, revision uint64) *insertResult {
 	newNode := n.clone(revision)
 	newNode.children[pos] = childIResult.modified
-	childIResult.modified.setParent(newNode)
+	return &insertResult{
+		rtype:    iRTypeModified,
+		modified: newNode,
+	}
+}
+
+func (n *internalNode) insertChild(pos int, childIResult *insertResult, revision uint64) *insertResult {
+	newNode := newInternalNode(n.tree, revision)
+
+	// inset key
+	for i := 0; i < pos; i++ {
+		newNode.keys = append(newNode.keys, n.keys[i])
+	}
+	newNode.keys = append(newNode.keys, childIResult.pivot)
+	for i := pos; i < len(n.keys); i++ {
+		newNode.keys = append(newNode.keys, n.keys[i])
+	}
+
+	// insert child
+	for i := 0; i < pos; i++ {
+		newNode.children = append(newNode.children, n.children[i])
+	}
+	newNode.children = append(newNode.children, childIResult.left)
+	newNode.children = append(newNode.children, childIResult.right)
+	for i := pos + 1; i < len(n.keys); i++ {
+		newNode.children = append(newNode.children, n.children[i])
+	}
 
 	return &insertResult{
 		rtype:    iRTypeModified,
 		modified: newNode,
+	}
+}
+
+func (n *internalNode) addAndSplit(pos int, childIResult *insertResult, revision uint64) *insertResult {
+	leftNode := newInternalNode(n.tree, revision)
+	rightNode := newInternalNode(n.tree, revision)
+	middle := n.splitPivot()
+	if pos < middle {
+
+	} else if pos == middle {
+
+	} else {
+
 	}
 }
 
@@ -65,10 +103,13 @@ func (n *internalNode) insert(key, value []byte, revision uint64) *insertResult 
 		pos++
 	}
 	childIResult := n.children[pos].insert(key, value, revision)
-	if childIResult.rtype == iRTypeModified {
+	if childIResult.rtype == iRTypeModified { // modified result
 		return n.replaceChild(pos, childIResult, revision)
-	} else {
-
+	} else { // split result
+		if len(n.keys)+1 <= n.maxKeys() {
+			return n.insertChild(pos, childIResult, revision)
+		} else {
+			return n.addAndSplit(pos, childIResult, revision)
+		}
 	}
-	return nil
 }

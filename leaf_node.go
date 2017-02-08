@@ -5,10 +5,9 @@ type leafNode struct {
 	values [][]byte
 }
 
-func newLeafNode(t *MVCCBtree, p node, r uint64) *leafNode {
+func newLeafNode(t *MVCCBtree, r uint64) *leafNode {
 	return &leafNode{
 		tree:     t,
-		parent:   p,
 		revision: r,
 		keys:     make([][]byte, 0, t.order-1),
 		values:   make([][]byte, 0, t.order-1),
@@ -38,7 +37,7 @@ func (n *leafNode) insertValueAt(idx int, value []byte) {
 }
 
 func (n *leafNode) clone(revision uint64) *leafNode {
-	newLeaf := newLeafNode(n.tree, n.parent, revision)
+	newLeaf := newLeafNode(n.tree, revision)
 	for _, k := range n.keys {
 		newLeaf.keys = append(newLeaf.keys, k)
 	}
@@ -61,7 +60,7 @@ func (n *leafNode) replaceValue(pos int, value []byte, revision uint64) *insertR
 }
 
 func (n *leafNode) addValue(pos int, key, value []byte, revision uint64) *insertResult {
-	newLeaf := newLeafNode(n.tree, nil, revision)
+	newLeaf := newLeafNode(n.tree, revision)
 	for i := 0; i < pos; i++ {
 		newLeaf.keys = append(newLeaf.keys, n.keys[i])
 		newLeaf.values = append(newLeaf.values, n.values[i])
@@ -80,8 +79,8 @@ func (n *leafNode) addValue(pos int, key, value []byte, revision uint64) *insert
 }
 
 func (n *leafNode) addAndSplit(pos int, key, value []byte, revision uint64) *insertResult {
-	leftLeaf := newLeafNode(n.tree, nil, revision)
-	rightLeaf := newLeafNode(n.tree, nil, revision)
+	leftLeaf := newLeafNode(n.tree, revision)
+	rightLeaf := newLeafNode(n.tree, revision)
 	middle := n.splitPivot()
 	if pos <= middle {
 		for i := 0; i < pos; i++ {
