@@ -12,7 +12,7 @@ var testDotExePath = "dot"
 
 func TestBtreeRandPutGet(t *testing.T) {
 	m := 5
-	n := 1000
+	n := 10
 
 	rnd := rand.New(rand.NewSource(time.Now().UnixNano()))
 	results := make(map[string]string)
@@ -25,10 +25,10 @@ func TestBtreeRandPutGet(t *testing.T) {
 		results[string(key)] = string(value)
 		btree.Put(key, value)
 		fmt.Printf("Put %d\n", r)
-		//writeDotSvg(testDotExePath, fmt.Sprintf("%02d.svg", i), btree)
+		writeDotSvg(testDotExePath, fmt.Sprintf("%02d.svg", i), btree, fmt.Sprintf("Insert %v:", string(key)))
 	}
 
-	writeDotSvg(testDotExePath, "output.svg", btree)
+	writeDotSvg(testDotExePath, "output.svg", btree, "")
 
 	for k, v := range results {
 		value := btree.Get([]byte(k))
@@ -59,5 +59,5 @@ func TestBtreePutGet(t *testing.T) {
 		}
 	}
 
-	writeDotSvg(testDotExePath, "output.svg", btree)
+	writeDotSvg(testDotExePath, "output.svg", btree, "")
 }

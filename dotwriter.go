@@ -8,9 +8,9 @@ import (
 )
 
 // dump btree to svg picture (use graphviz)
-func writeDotSvg(dotExePath string, outputSvg string, tree *MVCCBtree) error {
+func writeDotSvg(dotExePath string, outputSvg string, tree *MVCCBtree, label string) error {
 	buffer := bytes.NewBuffer(nil)
-	err := writeDotGraph(tree.GetTree().root, buffer)
+	err := writeDotGraph(tree.GetTree().root, buffer, label)
 	if err != nil {
 		return err
 	}
@@ -42,15 +42,17 @@ func writeDotSvg(dotExePath string, outputSvg string, tree *MVCCBtree) error {
 	return f.Close()
 }
 
-func writeDotGraph(root node, buffer *bytes.Buffer) error {
-	_, err := buffer.WriteString(
+func writeDotGraph(root node, buffer *bytes.Buffer, label string) error {
+	graphStartFmt :=
 		`
 digraph {
-    graph [margin=0, splines=line];
+    graph [margin=0, splines=line label="%s" labelfontcolor="crimson" labelloc="t" labeljust="l"];
     edge [penwidth=2];
     node [shape = record,style=filled, fillcolor=white];
 
-`)
+`
+
+	_, err := buffer.WriteString(fmt.Sprintf(graphStartFmt, label))
 	if err != nil {
 		return nil
 	}
