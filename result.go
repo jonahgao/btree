@@ -9,6 +9,8 @@ const (
 	dRTypeRemoved         = 12
 	dRTypeBorrowFromLeft  = 13
 	dRTypeBorrowFromRight = 14
+	dRTypeMergeWithLeft   = 15
+	dRTypeMergeWithRight  = 16
 )
 
 type insertResult struct {

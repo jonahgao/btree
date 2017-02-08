@@ -216,8 +216,46 @@ func (n *leafNode) borrowFromRight(pos int, revision uint64, sibling *leafNode) 
 	}
 }
 
-func (n *leafNode) merge() *deleteResult {
-	return nil
+func (n *leafNode) mergeWithLeft(pos int, revision uint64, sibling *leafNode) *deleteResult {
+	newLeaf := newLeafNode(n.tree, revision)
+	for i := 0; i < len(sibling.keys); i++ {
+		newLeaf.keys = append(newLeaf.keys, sibling.keys[i])
+		newLeaf.values = append(newLeaf.values, sibling.values[i])
+	}
+	for i := 0; i < pos; i++ {
+		newLeaf.keys = append(newLeaf.keys, n.keys[i])
+		newLeaf.values = append(newLeaf.values, n.values[i])
+	}
+	for i := pos + 1; i < len(n.keys); i++ {
+		newLeaf.keys = append(newLeaf.keys, n.keys[i])
+		newLeaf.values = append(newLeaf.values, n.values[i])
+	}
+
+	return &deleteResult{
+		rtype:    dRTypeMergeWithLeft,
+		modified: newLeaf,
+	}
+}
+
+func (n *leafNode) mergeWithRight(pos int, revision uint64, sibling *leafNode) *deleteResult {
+	newLeaf := newLeafNode(n.tree, revision)
+	for i := 0; i < pos; i++ {
+		newLeaf.keys = append(newLeaf.keys, n.keys[i])
+		newLeaf.values = append(newLeaf.values, n.values[i])
+	}
+	for i := pos + 1; i < len(n.keys); i++ {
+		newLeaf.keys = append(newLeaf.keys, n.keys[i])
+		newLeaf.values = append(newLeaf.values, n.values[i])
+	}
+	for i := 0; i < len(sibling.keys); i++ {
+		newLeaf.keys = append(newLeaf.keys, sibling.keys[i])
+		newLeaf.values = append(newLeaf.values, sibling.values[i])
+	}
+
+	return &deleteResult{
+		rtype:    dRTypeMergeWithRight,
+		modified: newLeaf,
+	}
 }
 
 func (n *leafNode) delete(key []byte, revision uint64, parent node, parentPos int) *deleteResult {
@@ -242,6 +280,10 @@ func (n *leafNode) delete(key []byte, revision uint64, parent node, parentPos in
 			return n.borrowFromRight(pos, revision, sibling)
 		}
 	} else {
-		return n.merge()
+		if siblingPos < parentPos {
+			return n.mergeWithLeft(pos, revision, sibling)
+		} else {
+			return n.mergeWithRight(pos, revision, sibling)
+		}
 	}
 }
