@@ -4,12 +4,13 @@ import "bytes"
 
 type node interface {
 	isLeaf() bool
-	getValue([]byte) []byte
+	setParent(node)
+	get([]byte) []byte
 	insert([]byte, []byte, uint64) *insertResult
 }
 
 type baseNode struct {
-	tree     *btree
+	tree     *MVCCBtree
 	parent   node
 	revision uint64
 	keys     [][]byte
@@ -23,11 +24,15 @@ func (n *baseNode) minKeys() int {
 	if n.isRoot() {
 		return 1
 	}
-	return (n.tree.order+1)/2 - 1
+	return (n.tree.GetOrder()+1)/2 - 1
 }
 
 func (n *baseNode) maxKeys() int {
-	return n.tree.order - 1
+	return n.tree.GetOrder() - 1
+}
+
+func (n *baseNode) splitPivot() int {
+	return n.tree.GetOrder() / 2
 }
 
 // find equal or greater key pos. return exist(euqal) and index

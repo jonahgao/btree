@@ -1,22 +1,12 @@
 package btree
 
-type insertResult struct {
-}
-
-type deleteResult struct {
-}
-
-var gInsertResult insertResult
-var gDeleteResult deleteResult
-
-type btree struct {
+type btreeHeader struct {
 	mbtree   *MVCCBtree
-	order    int
 	root     node
 	revision uint64
 }
 
-func initBtree(mbtree *MVCCBtree, revision uint64, key, value []byte) *btree {
+func initBtreeHeader(mbtree *MVCCBtree, revision uint64, key, value []byte) *btree {
 	tree := &btree{
 		mbtree:   mbtree,
 		revision: revision,
@@ -31,13 +21,17 @@ func initBtree(mbtree *MVCCBtree, revision uint64, key, value []byte) *btree {
 	return tree
 }
 
-func (t *btree) getRevision() uint64 {
-	return t.revision
+func (h *btreeHeader) GetRevision() uint64 {
+	return h.revision
 }
 
-func (t *btree) Get(key []byte) []byte {
-	if t == nil || t.root == nil {
+func (h *btreeHeader) GetOrder() int {
+	return h.mbtree.GetOrder()
+}
+
+func (h *btreeHeader) Get(key []byte) []byte {
+	if h == nil || h.root == nil {
 		return nil
 	}
-	return t.root.getValue(key)
+	return h.root.getValue(key)
 }

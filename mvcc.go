@@ -4,9 +4,20 @@ import (
 	"sync"
 )
 
+type Snapshot interface {
+	Get(key []byte) []byte
+}
+
+type Iterator interface {
+	Next() bool
+	Key() []byte
+	Value() []byte
+	Error() error
+}
+
 type MVCCBtree struct {
 	order           int
-	currentTree     *btree
+	currentTree     *btreeHeader
 	currentRevision uint64
 	metaLock        sync.RWMutex
 	writeLock       sync.Mutex
@@ -41,6 +52,10 @@ func (mt *MVCCBtree) putTree(bt *btree) {
 	mt.metaLock.Unlock()
 }
 
+func (mt *MVCCBtree) GetSnapshot() Snapshot {
+	return mt.GetTree()
+}
+
 func (mt *MVCCBtree) Get(key []byte) []byte {
 	return mt.GetTree().Get(key)
 }
@@ -53,7 +68,7 @@ func (mt *MVCCBtree) Put(key []byte, value []byte) {
 
 	oldTree := mt.GetTree()
 	if oldTree == nil {
-		newTree := initBtree(mt, mt.currentRevision, key, value)
+		newTree := initBtreeHeader(mt, mt.currentRevision, key, value)
 		mt.putTree(newTree)
 	} else {
 

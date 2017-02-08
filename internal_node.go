@@ -5,7 +5,7 @@ type internalNode struct {
 	children []node
 }
 
-func newInternalNode(t *btree, p node, r uint64) *internalNode {
+func newInternalNode(t *MVCCBtree, p node, r uint64) *internalNode {
 	return &internalNode{
 		tree:     t,
 		parent:   p,
@@ -19,13 +19,13 @@ func (n *internalNode) isLeaf() bool {
 	return false
 }
 
-func (n *internalNode) getValue([]byte) []byte {
+func (n *internalNode) get([]byte) []byte {
 	exist, idx := n.findPos(key)
 	// equal: go to right
 	if exist {
-		return n.children[idx+1].getValue(key)
+		return n.children[idx+1].get(key)
 	}
-	return n.children[idx].getValue(key)
+	return n.children[idx].get(key)
 }
 
 func (n *internalNode) insertChildAt(idx int, child node) {
@@ -48,7 +48,27 @@ func (n *internalNode) clone(revision uint64) *internalNode {
 	}
 }
 
+func (n *internalNode) replaceChild(pos int, childIResult *insertResult, revision uint64) *insertResult {
+	newNode := n.clone(revision)
+	newNode.children[pos] = childIResult.modified
+	childIResult.modified.setParent(newNode)
+
+	return &insertResult{
+		rtype:    iRTypeModified,
+		modified: newNode,
+	}
+}
+
 func (n *internalNode) insert(key, value []byte, revision uint64) *insertResult {
-	//TODO:
+	exist, pos := n.findPos(key)
+	if exist {
+		pos++
+	}
+	childIResult := n.children[pos].insert(key, value, revision)
+	if childIResult.rtype == iRTypeModified {
+		return n.replaceChild(pos, childIResult, revision)
+	} else {
+
+	}
 	return nil
 }

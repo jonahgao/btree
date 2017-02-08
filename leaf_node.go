@@ -5,7 +5,7 @@ type leafNode struct {
 	values [][]byte
 }
 
-func newLeafNode(t *btree, p node, r uint64) *leafNode {
+func newLeafNode(t *MVCCBtree, p node, r uint64) *leafNode {
 	return &leafNode{
 		tree:     t,
 		parent:   p,
@@ -19,7 +19,7 @@ func (n *leafNode) isLeaf() bool {
 	return true
 }
 
-func (n *leafNode) getValue([]byte) []byte {
+func (n *leafNode) get([]byte) []byte {
 	exist, idx := n.findPos(key)
 	if !exist {
 		return nil
@@ -61,10 +61,68 @@ func (n *leafNode) replaceValue(pos int, value []byte, revision uint64) *insertR
 }
 
 func (n *leafNode) addValue(pos int, key, value []byte, revision uint64) *insertResult {
+	newLeaf := newLeafNode(n.tree, nil, revision)
+	for i := 0; i < pos; i++ {
+		newLeaf.keys = append(newLeaf.keys, n.keys[i])
+		newLeaf.values = append(newLeaf.values, n.values[i])
+	}
+	newLeaf.keys = append(newLeaf.keys, key)
+	newLeaf.values = append(newLeaf.values, value)
+	for i := pos; i < len(n.keys); i++ {
+		newLeaf.keys = append(newLeaf.keys, n.keys[i])
+		newLeaf.values = append(newLeaf.values, n.values[i])
+	}
 
+	return &insertResult{
+		rtype:    iRTypeModified,
+		modified: newLeaf,
+	}
 }
 
 func (n *leafNode) addAndSplit(pos int, key, value []byte, revision uint64) *insertResult {
+	leftLeaf := newLeafNode(n.tree, nil, revision)
+	rightLeaf := newLeafNode(n.tree, nil, revision)
+	middle := n.splitPivot()
+	if pos <= middle {
+		for i := 0; i < pos; i++ {
+			leftLeaf.keys = append(leftLeaf.keys, n.keys[i])
+			leftLeaf.values = append(leftLeaf.values, n.values[i])
+		}
+		leftLeaf.keys = append(leftLeaf.keys, key)
+		leftLeaf.values = append(leftLeaf.values, value)
+		for i := pos; i < middle; i++ {
+			leftLeaf.keys = append(leftLeaf.keys, n.keys[i])
+			leftLeaf.values = append(leftLeaf.values, n.values[i])
+		}
+
+		for i := middle; i < len(n.keys); i++ {
+			rightLeaf.keys = append(rightLeaf.keys, n.keys[i])
+			rightLeaf.values = append(rightLeaf.values, n.values[i])
+		}
+	} else {
+		for i := 0; i < middle; i++ {
+			leftLeaf.keys = append(leftLeaf.keys, n.keys[i])
+			leftLeaf.values = append(leftLeaf.values, n.values[i])
+		}
+
+		for i := middle; i < pos; i++ {
+			rightLeaf.keys = append(rightLeaf.keys, n.keys[i])
+			rightLeaf.values = append(rightLeaf.values, n.values[i])
+		}
+		rightLeaf.keys = append(rightLeaf.keys, key)
+		rightLeaf.values = append(rightLeaf.values, value)
+		for i := pos; i < len(n.keys); i++ {
+			rightLeaf.keys = append(rightLeaf.keys, n.keys[i])
+			rightLeaf.values = append(rightLeaf.values, n.values[i])
+		}
+	}
+
+	return &insertResult{
+		rtype: iRTypeSplit,
+		left:  leftLeaf,
+		right: rightLeaf,
+		pivot: rightLeaf.keys[0],
+	}
 }
 
 func (n *leafNode) insert(key, value []byte, revision uint64) *insertResult {
