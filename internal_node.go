@@ -20,6 +20,10 @@ func (n *internalNode) isLeaf() bool {
 	return false
 }
 
+func (n *internalNode) leftMostKey() []byte {
+	return n.children[0].leftMostKey()
+}
+
 func (n *internalNode) get(key []byte) []byte {
 	exist, idx := n.findPos(key)
 	// equal: go to right
@@ -191,6 +195,62 @@ func (n *internalNode) insert(key, value []byte, revision uint64) *insertResult 
 	}
 }
 
+func (n *internalNode) handleRemovedResult(childResult *deleteResult, pos int, exist bool, revision uint64) *deleteResult {
+	newNode := n.clone(revision)
+	newNode.children[pos] = childResult.modified
+	// the deleted key is in our node's keys, update to right child's left most
+	if exist {
+		newNode.keys[pos-1] = childResult.modified.leftMostKey()
+	}
+	return &deleteResult{
+		rtype:    dRTypeRemoved,
+		modified: newNode,
+	}
+}
+
+func (n *internalNode) handleBorrowedResult(childResult *deleteResult, pos int, exist bool, revision uint64) *deleteResult {
+	newInternalNode := n.clone(revision)
+	if exist {
+		if childResult.rtype == dRTypeBorrowFromLeft {
+
+		} else {
+
+		}
+	} else {
+		if childResult.rtype == dRTypeBorrowFromLeft {
+
+		} else {
+
+		}
+	}
+
+	return &deleteResult{
+		rtype:    dRTypeRemoved,
+		modified: newInternalNode,
+	}
+}
+
+func (n *internalNode) handleMergeResult(childResult *deleteResult, pos int, revision uint64) *deleteResult {
+	return nil
+}
+
 func (n *internalNode) delete(key []byte, revision uint64, parent node, parentPos int) *deleteResult {
+	exist, pos := n.findPos(key)
+	if exist {
+		pos++
+	}
+
+	childDResult := n.children[pos].delete(key, revision, n, pos)
+	// not present
+	if childDResult.rtype == dRTypeNotPresent {
+		return childDResult
+	} else if childDResult.rtype == dRTypeRemoved {
+		return n.handleRemovedResult(childDResult, pos, exist, revision)
+	} else if childDResult.rtype == dRTypeBorrowFromLeft || childDResult.rtype == dRTypeBorrowFromRight {
+		return n.handleBorrowedResult(childDResult, pos, exist, revision)
+	} else { // merge
+		return n.handleMergeResult(childDResult, pos, revision)
+	}
+
 	return nil
 }

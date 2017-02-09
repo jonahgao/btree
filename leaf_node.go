@@ -20,6 +20,10 @@ func (n *leafNode) isLeaf() bool {
 	return true
 }
 
+func (n *leafNode) leftMostKey() []byte {
+	return n.keys[0]
+}
+
 func (n *leafNode) get(key []byte) []byte {
 	exist, idx := n.findPos(key)
 	if !exist {

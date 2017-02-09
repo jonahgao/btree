@@ -6,6 +6,7 @@ type node interface {
 	isLeaf() bool
 	keyAt(int) []byte
 	numOfKeys() int
+	leftMostKey() []byte
 
 	get([]byte) []byte
 	insert([]byte, []byte, uint64) *insertResult
