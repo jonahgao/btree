@@ -212,25 +212,144 @@ func (n *internalNode) handleBorrowedResult(childResult *deleteResult, pos int, 
 	newInternalNode := n.clone(revision)
 	if exist {
 		if childResult.rtype == dRTypeBorrowFromLeft {
-
+			newInternalNode.keys[pos-1] = childResult.modified.leftMostKey()
+			newInternalNode.children[pos] = childResult.modified
+			newInternalNode.children[pos-1] = childResult.modifiedSibling
 		} else {
-
+			newInternalNode.keys[pos-1] = childResult.modified.leftMostKey()
+			newInternalNode.keys[pos] = childResult.modifiedSibling.leftMostKey()
+			newInternalNode.children[pos] = childResult.modified
+			newInternalNode.children[pos+1] = childResult.modifiedSibling
 		}
 	} else {
 		if childResult.rtype == dRTypeBorrowFromLeft {
-
+			newInternalNode.keys[pos-1] = childResult.modified.leftMostKey()
+			newInternalNode.children[pos-1] = childResult.modifiedSibling
+			newInternalNode.children[pos] = childResult.modified
 		} else {
-
+			newInternalNode.keys[pos-1] = childResult.modifiedSibling.leftMostKey()
+			newInternalNode.children[pos] = childResult.modifiedSibling
+			newInternalNode.children[pos+1] = childResult.modified
 		}
 	}
-
 	return &deleteResult{
 		rtype:    dRTypeRemoved,
 		modified: newInternalNode,
 	}
 }
 
-func (n *internalNode) handleMergeResult(childResult *deleteResult, pos int, revision uint64) *deleteResult {
+func (n *internalNode) removeKey(childResult *deleteResult, pos int, exist bool, revision uint64) *deleteResult {
+	newNode := newInternalNode(n.tree, revision)
+
+	// handle children
+	removeChildPos := pos
+	if childResult.rtype == dRTypeMergeWithRight {
+		removeChildPos++
+	}
+	for i := 0; i < removeChildPos-1; i++ {
+		newNode.children = append(newNode.children, n.children[i])
+	}
+	newNode.children = append(newNode.children, childResult.modified)
+	for i := removeChildPos + 1; i < len(n.children); i++ {
+		newNode.children = append(newNode.children, n.children[i])
+	}
+
+	// handle keys
+	removeKeyPos := pos
+	if childResult.rtype == dRTypeMergeWithRight {
+		removeKeyPos++
+	}
+	if exist {
+		removeKeyPos--
+	}
+	for i := 0; i < removeKeyPos; i++ {
+		newNode.keys = append(newNode.keys, n.keys[i])
+	}
+	for i := removeKeyPos + 1; i < len(n.keys[i]); i++ {
+		newNode.keys = append(newNode.keys, n.keys[i])
+	}
+	//TODO: is conditional correct?
+	if exist && childResult.rtype == dRTypeBorrowFromRight && removeChildPos > 0 {
+		newNode.keys[removeKeyPos-1] = childResult.modified.leftMostKey()
+	}
+
+	return &deleteResult{
+		rtype:    dRTypeRemoved,
+		modified: newNode,
+	}
+}
+
+func (n *internalNode) borrowFromLeft(childResult *deleteResult, pos int, exist bool, revision uint64, sibling *internalNode) *deleteResult {
+	newNode := newInternalNode(n.tree, revision)
+	newSibling := newInternalNode(n.tree, revision)
+
+	// handle new sibling
+	for i := 0; i < len(sibling.keys)-1; i++ {
+		newSibling.keys = append(newSibling.keys, sibling.keys[i])
+	}
+	for i := 0; i < len(sibling.children)-1; i++ {
+		newSibling.children = append(newSibling.children, sibling.children[i])
+	}
+
+	// handle new node children
+	// first child is sibling's last child
+	newNode.children = append(newNode.children, sibling.children[len(sibling.children)-1])
+	removeChildPos := pos
+	if childResult.rtype == dRTypeMergeWithRight {
+		removeChildPos++
+	}
+	for i := 0; i < removeChildPos-1; i++ {
+		newNode.children = append(newNode.children, n.children[i])
+	}
+	newNode.children = append(newNode.children, childResult.modified)
+	for i := removeChildPos + 1; i < len(n.children); i++ {
+		newNode.children = append(newNode.children, n.children[i])
+	}
+
+	// handle keys
+	removeKeyPos := pos
+	if childResult.rtype == dRTypeMergeWithRight {
+		removeKeyPos++
+	}
+	if exist {
+		removeKeyPos--
+	}
+	newNode.keys = append(newNode.keys, nil) // placeholder
+	for i := 0; i < removeKeyPos; i++ {
+		newNode.keys = append(newNode.keys, n.keys[i])
+	}
+	for i := removeKeyPos + 1; i < len(n.keys[i]); i++ {
+		newNode.keys = append(newNode.keys, n.keys[i])
+	}
+	if exist && childResult.rtype == dRTypeBorrowFromRight && removeChildPos > 0 {
+		newNode.keys[removeKeyPos-1] = childResult.modified.leftMostKey()
+	}
+	// the borrowed key must be right child's left most
+	newNode.keys[0] = newNode.children[1].leftMostKey()
+
+	return &deleteResult{
+		rtype:           dRTypeBorrowFromLeft,
+		modified:        newNode,
+		modifiedSibling: newSibling,
+	}
+}
+
+func (n *internalNode) borrowFromRight(childResult *deleteResult, pos int, exist bool, revision uint64, sibling *internalNode) *deleteResult {
+	newNode := newInternalNode(n.tree, revision)
+	newSibling := newInternalNode(n.tree, revision)
+
+	return &deleteResult{
+		rtype:           dRTypeBorrowFromRight,
+		modified:        newNode,
+		modifiedSibling: newSibling,
+	}
+}
+
+func (n *internalNode) mergeWithLeft() *deleteResult {
+	return nil
+}
+
+func (n *internalNode) mergeWithRight() *deleteResult {
 	return nil
 }
 
@@ -249,7 +368,25 @@ func (n *internalNode) delete(key []byte, revision uint64, parent node, parentPo
 	} else if childDResult.rtype == dRTypeBorrowFromLeft || childDResult.rtype == dRTypeBorrowFromRight {
 		return n.handleBorrowedResult(childDResult, pos, exist, revision)
 	} else { // merge
-		return n.handleMergeResult(childDResult, pos, revision)
+		if parent == nil || len(n.keys) > n.minKeys() {
+			return n.removeKey(childDResult, pos, exist, revision)
+		} else {
+			siblingPos := n.selectSibling(parent, parentPos)
+			sibling := (parent.(*internalNode)).children[siblingPos].(*internalNode)
+			if sibling.numOfKeys() > n.minKeys() {
+				if siblingPos < parentPos {
+					return n.borrowFromLeft(childDResult, pos, exist, revision, sibling)
+				} else {
+					return n.borrowFromRight(childDResult, pos, exist, revision, sibling)
+				}
+			} else {
+				if siblingPos < parentPos {
+					return n.mergeWithLeft()
+				} else {
+					return n.mergeWithRight()
+				}
+			}
+		}
 	}
 
 	return nil
