@@ -62,6 +62,7 @@ func (n *baseNode) insertKeyAt(idx int, key []byte) {
 	n.keys[idx] = key
 }
 
+// for delete: select a sibling for borrow or merge
 func (n *baseNode) selectSibling(parent node, parentPos int) int {
 	if parentPos == 0 {
 		return 1

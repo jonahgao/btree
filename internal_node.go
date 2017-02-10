@@ -228,8 +228,8 @@ func (n *internalNode) handleBorrowedResult(childResult *deleteResult, pos int, 
 			newInternalNode.children[pos] = childResult.modified
 		} else {
 			newInternalNode.keys[pos] = childResult.modifiedSibling.leftMostKey()
-			newInternalNode.children[pos] = childResult.modifiedSibling
-			newInternalNode.children[pos+1] = childResult.modified
+			newInternalNode.children[pos] = childResult.modified
+			newInternalNode.children[pos+1] = childResult.modifiedSibling
 		}
 	}
 	return &deleteResult{

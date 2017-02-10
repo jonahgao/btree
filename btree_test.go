@@ -39,8 +39,8 @@ func TestBtreeRandPutGet(t *testing.T) {
 }
 
 func TestBtreeDelete(t *testing.T) {
-	m := 3
-	n := 30
+	m := 5
+	n := 20
 
 	rnd := rand.New(rand.NewSource(time.Now().UnixNano()))
 	results := make(map[string]string)
@@ -69,7 +69,7 @@ func TestBtreeDelete(t *testing.T) {
 		t.Logf("Delete %v", key)
 		btree.Delete([]byte(key))
 		idx++
-		writeDotSvg(testDotExePath, fmt.Sprintf("%02d.svg", idx), btree, fmt.Sprintf("Delete %v:", key))
+		writeDotSvg(testDotExePath, fmt.Sprintf("output%02d.svg", idx), btree, fmt.Sprintf("Delete %v:", key))
 	}
 }
 
