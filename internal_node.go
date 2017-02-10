@@ -227,7 +227,7 @@ func (n *internalNode) handleBorrowedResult(childResult *deleteResult, pos int, 
 			newInternalNode.children[pos-1] = childResult.modifiedSibling
 			newInternalNode.children[pos] = childResult.modified
 		} else {
-			newInternalNode.keys[pos-1] = childResult.modifiedSibling.leftMostKey()
+			newInternalNode.keys[pos] = childResult.modifiedSibling.leftMostKey()
 			newInternalNode.children[pos] = childResult.modifiedSibling
 			newInternalNode.children[pos+1] = childResult.modified
 		}
@@ -261,14 +261,11 @@ func (n *internalNode) childMergeAppendTo(newNode *internalNode, childResult *de
 	// copy and append keys, skip the merged key; update key before skip pos if necessary
 	skipKeyPos := -1
 	if childResult.rtype == dRTypeMergeWithLeft {
-		skipKeyPos = pos
+		skipKeyPos = pos - 1
 	} else if childResult.rtype == dRTypeMergeWithRight {
-		skipKeyPos = pos + 1
+		skipKeyPos = pos
 	} else {
 		panic("unexpected merge type")
-	}
-	if exist {
-		skipKeyPos--
 	}
 	for i := 0; i < skipKeyPos; i++ {
 		newNode.keys = append(newNode.keys, n.keys[i])
@@ -276,7 +273,7 @@ func (n *internalNode) childMergeAppendTo(newNode *internalNode, childResult *de
 	if exist && childResult.rtype == dRTypeMergeWithRight {
 		newNode.keys[len(newNode.keys)-1] = childResult.modified.leftMostKey()
 	}
-	for i := skipKeyPos + 1; i < len(n.keys[i]); i++ {
+	for i := skipKeyPos + 1; i < len(n.keys); i++ {
 		newNode.keys = append(newNode.keys, n.keys[i])
 	}
 }

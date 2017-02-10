@@ -38,6 +38,41 @@ func TestBtreeRandPutGet(t *testing.T) {
 	}
 }
 
+func TestBtreeDelete(t *testing.T) {
+	m := 3
+	n := 30
+
+	rnd := rand.New(rand.NewSource(time.Now().UnixNano()))
+	results := make(map[string]string)
+
+	btree := NewMVCCBtree(m)
+	for i := 1; i <= n; i++ {
+		r := rnd.Int() % 100
+		key := []byte(fmt.Sprintf("%02d", r))
+		value := []byte(fmt.Sprintf("Value%02d", r))
+		results[string(key)] = string(value)
+		btree.Put(key, value)
+		fmt.Printf("Put %d\n", r)
+	}
+
+	writeDotSvg(testDotExePath, "output.svg", btree, "")
+
+	for k, v := range results {
+		value := btree.Get([]byte(k))
+		if string(value) != v {
+			t.Errorf("expected=%v, actual=%v", v, string(value))
+		}
+	}
+
+	idx := 0
+	for key := range results {
+		t.Logf("Delete %v", key)
+		btree.Delete([]byte(key))
+		idx++
+		writeDotSvg(testDotExePath, fmt.Sprintf("%02d.svg", idx), btree, fmt.Sprintf("Delete %v:", key))
+	}
+}
+
 func TestBtreePutGet(t *testing.T) {
 	m := 4
 	n := 20
