@@ -8,9 +8,11 @@ import (
 )
 
 // dump btree to svg picture (use graphviz)
+// TODO: dump leaf's value
+// TODO: dump node's revision
 func writeDotSvg(dotExePath string, outputSvg string, tree *MVCCBtree, label string) error {
 	buffer := bytes.NewBuffer(nil)
-	err := writeDotGraph(tree.GetTree().root, buffer, label)
+	err := writeDotGraph(tree.getTree().root, buffer, label)
 	if err != nil {
 		return err
 	}

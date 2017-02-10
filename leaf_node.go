@@ -291,3 +291,7 @@ func (n *leafNode) delete(key []byte, revision uint64, parent node, parentPos in
 		}
 	}
 }
+
+func (n *leafNode) iterateNext(*iterator) bool {
+	return false
+}

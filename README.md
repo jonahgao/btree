@@ -1,2 +1,2 @@
 # mvcc-btree
- btree in memory with mvcc support
+ B+ tree in memory with mvcc support

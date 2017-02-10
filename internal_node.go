@@ -426,3 +426,7 @@ func (n *internalNode) delete(key []byte, revision uint64, parent node, parentPo
 	}
 	return nil
 }
+
+func (n *internalNode) iterateNext(*iterator) bool {
+	return false
+}

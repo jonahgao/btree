@@ -21,6 +21,18 @@ func (h *btreeHeader) Get(key []byte) []byte {
 	return h.root.get(key)
 }
 
+func (h *btreeHeader) NewIterator(beginKey, endKey []byte) Iterator {
+	iter := &iterator{
+		beginKey: beginKey,
+		endKey:   endKey,
+		stack:    make([]iteratorPos, 0, 8),
+	}
+	if h != nil && h.root != nil {
+		iter.stack = append(iter.stack, iteratorPos{node: h.root, pos: -1})
+	}
+	return iter
+}
+
 func (h *btreeHeader) put(key, value []byte, revision uint64) *btreeHeader {
 	if h == nil || h.root == nil {
 		root := newLeafNode(h.mbtree, revision)

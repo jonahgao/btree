@@ -11,6 +11,8 @@ type node interface {
 	get([]byte) []byte
 	insert([]byte, []byte, uint64) *insertResult
 	delete([]byte, uint64, node, int) *deleteResult
+
+	iterateNext(*iterator) bool
 }
 
 type baseNode struct {
