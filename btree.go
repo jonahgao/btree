@@ -78,5 +78,10 @@ func (mt *MVCCBtree) Put(key []byte, value []byte) {
 
 func (mt *MVCCBtree) Delete(key []byte) {
 	mt.writeLock.Lock()
-	defer mt.writeLock.Unlock()
+	mt.currentRevision++
+
+	oldTree := mt.GetTree()
+	mt.putTree(oldTree.delete(key, mt.currentRevision))
+
+	mt.writeLock.Unlock()
 }

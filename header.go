@@ -50,3 +50,31 @@ func (h *btreeHeader) put(key, value []byte, revision uint64) *btreeHeader {
 	}
 	return newHeader
 }
+
+func (h *btreeHeader) delete(key []byte, revision uint64) *btreeHeader {
+	if h == nil || h.root == nil {
+		return h
+	}
+
+	deleteResult := h.root.delete(key, revision, nil, -1)
+	if deleteResult.rtype == dRTypeNotPresent {
+		return h
+	} else {
+		newHeader := &btreeHeader{
+			mbtree:   h.mbtree,
+			revision: revision,
+		}
+
+		m := deleteResult.modified
+		if m.numOfKeys() == 0 {
+			if m.isLeaf() {
+				newHeader.root = nil
+			} else {
+				newHeader.root = m.(*internalNode).children[0]
+			}
+		} else {
+			newHeader.root = m
+		}
+		return newHeader
+	}
+}
