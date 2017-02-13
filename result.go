@@ -13,6 +13,8 @@ const (
 	dRTypeMergeWithRight  = 16
 )
 
+//TODO: one insertResult or delteResult shared by all nodes of the same btree
+
 type insertResult struct {
 	rtype    int // result type
 	modified node
