@@ -17,7 +17,21 @@ func (it *iterator) Next() bool {
 	if len(it.stack) == 0 {
 		return false
 	}
-	return it.stack[len(it.stack)-1].node.iterateNext(it)
+	return it.stackTop().node.iterateNext(it)
+}
+
+func (it *iterator) stackTop() iteratorPos {
+	return it.stack[len(it.stack)-1]
+}
+
+func (it *iterator) stackPop() iteratorPos {
+	top := it.stack[len(it.stack)-1]
+	it.stack = it.stack[:len(it.stack)-1]
+	return top
+}
+
+func (it *iterator) stackPush(pos iteratorPos) {
+	it.stack = append(it.stack, pos)
 }
 
 func (it *iterator) Key() []byte {

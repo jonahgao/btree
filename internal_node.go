@@ -427,6 +427,21 @@ func (n *internalNode) delete(key []byte, revision uint64, parent node, parentPo
 	return nil
 }
 
-func (n *internalNode) iterateNext(*iterator) bool {
-	return false
+func (n *internalNode) iterateNext(iter *iterator) bool {
+	top := iter.stackPop()
+	currentPos := top.pos
+	if currentPos == -1 {
+		exist, p := n.findPos(iter.beginKey)
+		if exist {
+			currentPos = p + 1
+		} else {
+			currentPos = p
+		}
+	}
+	if currentPos < len(n.children)-1 {
+		iter.stackPush(iteratorPos{node: n, pos: currentPos + 1})
+	}
+	child := n.children[currentPos]
+	iter.stackPush(iteratorPos{node: child, pos: -1})
+	return child.iterateNext(iter)
 }

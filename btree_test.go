@@ -96,3 +96,24 @@ func TestBtreePutGet(t *testing.T) {
 
 	writeDotSvg(testDotExePath, "output.svg", btree, "")
 }
+
+func TestBtreeIterator(t *testing.T) {
+	m := 5
+	n := 30
+
+	btree := NewMVCCBtree(m)
+	for i := 1; i <= n; i++ {
+		key := []byte(fmt.Sprintf("%04d", i))
+		value := []byte(fmt.Sprintf("Value%04d", i))
+		btree.Put(key, value)
+	}
+
+	writeDotSvg(testDotExePath, "output.svg", btree, "")
+
+	begin := []byte("0011")
+	end := []byte("0022")
+	iter := btree.NewIterator(begin, end)
+	for iter.Next() {
+		t.Logf("key: %v, value: %v", string(iter.Key()), string(iter.Value()))
+	}
+}

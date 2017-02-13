@@ -1,5 +1,7 @@
 package btree
 
+import "bytes"
+
 type leafNode struct {
 	baseNode
 	values [][]byte
@@ -292,6 +294,28 @@ func (n *leafNode) delete(key []byte, revision uint64, parent node, parentPos in
 	}
 }
 
-func (n *leafNode) iterateNext(*iterator) bool {
-	return false
+func (n *leafNode) iterateNext(iter *iterator) bool {
+	top := iter.stackPop()
+	currentPos := top.pos
+	if currentPos == -1 {
+		_, currentPos = n.findPos(iter.beginKey)
+		if currentPos >= len(n.keys) {
+			if len(iter.stack) > 0 {
+				return iter.stackTop().node.iterateNext(iter)
+			} else {
+				return false
+			}
+		}
+	}
+
+	iter.currentKey = n.keys[currentPos]
+	iter.currentValue = n.values[currentPos]
+	if bytes.Compare(iter.currentKey, iter.endKey) >= 0 {
+		return false
+	}
+
+	if currentPos < len(n.keys)-1 {
+		iter.stackPush(iteratorPos{node: n, pos: currentPos + 1})
+	}
+	return true
 }
